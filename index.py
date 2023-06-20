@@ -1,22 +1,38 @@
 # app.py
 from driver_code import main
 from flask import Flask,render_template,request,redirect,url_for,jsonify
+from langchain.embeddings import HuggingFaceInstructEmbeddings
+from InstructorEmbedding import INSTRUCTOR
+from langchain.vectorstores import Chroma
 
 import os
 import tempfile
 import requests
 from langchain import PromptTemplate, LLMChain,HuggingFaceHub
 from config import WHITE, GREEN, RESET_COLOR, model_name
-from utils import format_user_question
-from file_processing import clone_github_repo, load_and_index_files
+
 from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from nltk.tokenize import word_tokenize
 from transformers import pipeline
-from database import vectordb
+
 import os
 #from app import GithubUrl
 from langchain.llms import HuggingFacePipeline
+from langchain.embeddings import HuggingFaceInstructEmbeddings
+from InstructorEmbedding import INSTRUCTOR
+from langchain.vectorstores import Chroma
+import os
+import uuid
+import subprocess
+import shutil
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from rank_bm25 import BM25Okapi
+from langchain.document_loaders import DirectoryLoader, NotebookLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from utils import clean_and_tokenize
+
 os.environ['HUGGINGFACEHUB_API_TOKEN']='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'
 app=Flask("__name__")
 
@@ -41,13 +57,75 @@ def home():
         index1=[]
         document1=[]
         
-        repo_path="C:/Users/Aditya/OneDrive/Desktop/githubautomatedanalysis/RepoReader/repos"
-
-        #clone_github_repo(r1,"C:/Users/Aditya/OneDrive/Desktop/githubautomatedanalysis/RepoReader/repos")
+        repo_path="./repos"
+        if not os.path.exists(repo_path):
+             os.makedirs(repo_path)
+             for singlerepository in r1:
+                path=repo_path
+                clone='git clone ' + singlerepository
+                os.chdir(path)
+                os.system(clone)
+        else:
+             pass
+        
+        
         #calling the load and index files function to load and split the data 
-        data2=(load_and_index_files(repo_path))
+        
+        extensions = ['txt', 'md', 'markdown', 'rst', 'py', 'js', 'java', 'c', 'cpp', 'cs', 'go', 'rb', 'php', 'scala', 'html', 'htm', 'xml', 'json', 'yaml', 'yml', 'ini', 'toml', 'cfg', 'conf', 'sh', 'bash', 'css', 'scss', 'sql', 'gitignore', 'dockerignore', 'editorconfig', 'ipynb']
+
+        file_type_counts = {}
+        documents_dict = {}
+
+        for ext in extensions:
+            glob_pattern = f'**/*.{ext}'
+            try:
+                loader = None
+                if ext == 'ipynb':
+                    loader = NotebookLoader(str(repo_path), include_outputs=True, max_output_length=20, remove_newline=True)
+                else:
+                    loader = DirectoryLoader(repo_path, glob=glob_pattern)
+
+                loaded_documents = loader.load() if callable(loader.load) else []
+                if loaded_documents:
+                    file_type_counts[ext] = len(loaded_documents)
+                    for doc in loaded_documents:
+                        file_path = doc.metadata['source']
+                        relative_path = os.path.relpath(file_path, repo_path)
+                        file_id = str(uuid.uuid4())
+                        doc.metadata['source'] = relative_path
+                        doc.metadata['file_id'] = file_id
+
+                        documents_dict[file_id] = doc
+            except Exception as e:
+                print(f"Error loading files with pattern '{glob_pattern}': {e}")
+                continue
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+        split_documents = []
+        for file_id, original_doc in documents_dict.items():
+            split_docs = text_splitter.split_documents([original_doc])
+            for split_doc in split_docs:
+                split_doc.metadata['file_id'] = original_doc.metadata['file_id']
+                split_doc.metadata['source'] = original_doc.metadata['source']
+
+            split_documents.extend(split_docs)
+
+        index = None
+        if split_documents:
+            tokenized_documents = [clean_and_tokenize(doc.page_content) for doc in split_documents]
+            index = BM25Okapi(tokenized_documents)
+        
         #calling the vectordvb function from database.py to retrive the documents from vector store
-        vectordb1=vectordb(data2)
+        instructor_embeddings=HuggingFaceInstructEmbeddings(model_name='hkunlp/instructor-large')
+        if len(split_documents)*1.33>512:
+            split_documents=split_documents[:512]
+            persist_directory='db'
+            embedding=instructor_embeddings
+            vectordb=Chroma.from_documents(documents=split_documents,embedding=embedding,persist_directory=persist_directory)
+            retriever=vectordb.as_retriever(search_kwargs={"k":1})
+            
+            
         
         
         #creating a prompt template
@@ -83,7 +161,7 @@ def home():
                         repetition_penalty=1.15
                     )
         local_llm=HuggingFacePipeline(pipeline=pipe)
-        llm_chain = RetrievalQA.from_chain_type(llm=local_llm,chain_type="stuff",retriever=vectordb1,return_source_documents=True)
+        llm_chain = RetrievalQA.from_chain_type(llm=local_llm,chain_type="stuff",retriever=retriever,return_source_documents=True)
         response=llm_chain(prompt1)
         return render_template('index.html',data=response)
     
