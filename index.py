@@ -35,10 +35,12 @@ from utils import clean_and_tokenize
 
 os.environ['HUGGINGFACEHUB_API_TOKEN']='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'
 app=Flask("__name__")
-
+#global response
 @app.route("/",methods=["POST","GET"])
 def home():
+    
     if request.method=='POST':
+        global response
         GithubUrl=request.form['GithubUrl']
         username=GithubUrl.split('/')[-1]
         #adding the username to the github api
@@ -163,12 +165,12 @@ def home():
         local_llm=HuggingFacePipeline(pipeline=pipe)
         llm_chain = RetrievalQA.from_chain_type(llm=local_llm,chain_type="stuff",retriever=retriever,return_source_documents=True)
         response=llm_chain(prompt1)
-        return render_template('templates/index.html',data=response)
+        return render_template('hello.html',data=response)
+    else:
+        return render_template('hello.html')
     
         
 
-    else:
-            print('please enter a input')
     
 
     
