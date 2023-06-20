@@ -1,5 +1,5 @@
 # app.py
-from driver_code import main
+#from driver_code import main
 from flask import Flask,render_template,request,redirect,url_for,jsonify
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from InstructorEmbedding import INSTRUCTOR
@@ -9,7 +9,7 @@ import os
 import tempfile
 import requests
 from langchain import PromptTemplate, LLMChain,HuggingFaceHub
-from config import WHITE, GREEN, RESET_COLOR, model_name
+#from config import WHITE, GREEN, RESET_COLOR, model_name
 
 from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceInstructEmbeddings
@@ -31,7 +31,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from rank_bm25 import BM25Okapi
 from langchain.document_loaders import DirectoryLoader, NotebookLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from utils import clean_and_tokenize
+#from utils import clean_and_tokenize
 
 os.environ['HUGGINGFACEHUB_API_TOKEN']='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'
 app=Flask("__name__")
@@ -114,9 +114,7 @@ def home():
             split_documents.extend(split_docs)
 
         index = None
-        if split_documents:
-            tokenized_documents = [clean_and_tokenize(doc.page_content) for doc in split_documents]
-            index = BM25Okapi(tokenized_documents)
+        
         
         #calling the vectordvb function from database.py to retrive the documents from vector store
         instructor_embeddings=HuggingFaceInstructEmbeddings(model_name='hkunlp/instructor-large')
