@@ -90,7 +90,7 @@ def home():
         
 
     else:
-            return render_template('index.html')
+            print('please enter a input')
     
 
     
