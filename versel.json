@@ -1,27 +1,14 @@
 {
     "builds":[
         {
-            "src":"utils.py",
-            "use":"@vercel/python"
-        }
-        ,
-        {
-            "src":"file_processing.py",
-            "use":"@vercel/python"
-        },
-        {
-            "src":"database.py",
-            "use":"@vercel/python"
-        },
-        {
-            "src":"file_processing.py",
+            "src":"./index.py",
             "use":"@vercel/python"
         }
     ],
     "routes":[
         { 
             "src":"/(.*)",
-            "dest":"main.py"
+            "dest":"/"
         }
     ]
 }

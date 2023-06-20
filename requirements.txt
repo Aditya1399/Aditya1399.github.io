@@ -95,3 +95,4 @@ wrapt==1.14.1
 XlsxWriter==3.0.9
 yarl==1.8.2
 zstandard==0.20.0
+flask
