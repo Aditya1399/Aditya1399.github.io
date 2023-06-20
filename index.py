@@ -40,7 +40,7 @@ app=Flask("__name__")
 def home():
     
     if request.method=='POST':
-        global response
+        
         GithubUrl=request.form['GithubUrl']
         username=GithubUrl.split('/')[-1]
         #adding the username to the github api
