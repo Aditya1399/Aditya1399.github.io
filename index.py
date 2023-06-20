@@ -163,7 +163,7 @@ def home():
         local_llm=HuggingFacePipeline(pipeline=pipe)
         llm_chain = RetrievalQA.from_chain_type(llm=local_llm,chain_type="stuff",retriever=retriever,return_source_documents=True)
         response=llm_chain(prompt1)
-        return render_template('index.html',data=response)
+        return render_template('templates/index.html',data=response)
     
         
 
